@@ -6,29 +6,64 @@
 # Automated procedure to remove Cryptolocker infections
 
 $startStopWatch = (Get-Date)
+0..1000 | Foreach-Object {$i++}
 
+$genInformation = "This script will scan and remove Cryptolocker infected files "
+# $userName = Read-Host "Provide a username "
+$filePath = Read-Host "Provide locations for the cryptolocker cleanup "
+$filePathArray = $filePath -split ","
+$initWarning = Write-Warning "The script will remove files on the following locations:"
+$filePathArray
 
-Write-Host "This script will scan and remove Cryptolocker infected files "
-$userName = Read-Host "Provide a username "
+$title = "Cryptolocker file removal"
+$message = "Are you sure you want to delete the encrypted files on the specified locations?"
+
+$yes = New-Object System.Management.Automation.Host.ChoiceDescription "&Yes", `
+    "Deletes all the encrypted files in the folder."
+
+$no = New-Object System.Management.Automation.Host.ChoiceDescription "&No", `
+    "Retains all the encrypted files in the folder."
+
+$options = [System.Management.Automation.Host.ChoiceDescription[]]($yes, $no)
+$result = $host.ui.PromptForChoice($title, $message, $options, 0) 
+switch ($result)
+
+    {
+        0 {""}
+        1 {
+            Write-Host "The script has been terminated early."
+            $endStopWatch = (Get-Date)
+            $elapsedTime = $(($endStopWatch - $startStopWatch).totalseconds)
+            Write-Host "The script has finished running and took $elapsedTime seconds to complete" -Foregroundcolor "Green" -Backgroundcolor "Black"  
+            Exit
+        }
+    }
+
+Foreach ($path in $filePathArray) {
+    $pathCheck = Test-Path -Path $path
+    if ($pathCheck -eq $False) {
+        "The specified file location is unavailable... "
+        Exit
+    }
+    Else {Continue}
+}
+
 $extentionArray = @()
 
 do {
  $input = (Read-Host "Please enter the file extention(s) ")
- if ($input -ne '') {$extentionArray += $input}
+ if ($input -ne '') {
+    $extentionArray += $input.Insert(0,"*")
+    }
 } until ($input -eq '')
 
-Foreach ($string in $fileArray) {
-    "*" + $string
+$finalArray = $extentionArray -Join ','
+
+Foreach ($path in $filePathArray) {
+    Get-ChildItem $path -Include $finalArray -Recurse # | Remove-Item -Force
 }
 
 $endStopWatch = (Get-Date)
-$elapsedTime = $(($endStopWatch-$startStopWatch).totalseconds)
+$elapsedTime = $(($endStopWatch - $startStopWatch).totalseconds)
 Write-Host "The script has finished running and took $elapsedTime seconds to complete" -Foregroundcolor "Green" -Backgroundcolor "Black"
 
-<#
-Foreach ($user in $userName) {
-    $userPath = "\\SYN037664\C$\users\adminlkam\Documents\Coding Workspace\test\$user\"
-    Get-ChildItem "$userPath" -Include $fileExtention -Recurse 
-    #| Remove-Item -Force
-}
-#>
