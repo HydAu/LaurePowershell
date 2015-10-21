@@ -55,7 +55,6 @@ do {
 } until ($input -eq '')
 
 Foreach ($path in $filePathArray) {
-    $extentionArray
     Get-ChildItem $path -Include $extentionArray -Recurse | select Name, DirectoryName | Format-Table # | Remove-Item -Force
 }
 
