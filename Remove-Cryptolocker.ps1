@@ -1,21 +1,54 @@
 # -------------------------------------------------  Author        :   Laure Kamalandua  ------------------------------------------------- #
 # -------------------------------------------------  Version       :   1                 ------------------------------------------------- #
-# -------------------------------------------------  Description   :   Remove encrypted files -------------------------------------------- #
-# -------------------------------------------------  Beta          :   ###               ------------------------------------------------- #
+# -------------------------------------------------  Description   :   Cryptolocker removal ---------------------------------------------- #
 
-# Automated procedure to remove Cryptolocker infections
+"
+
+                     ______   ______   __  __   ______  ______  ______   ______   __  __   ______   ______    
+                    /\  ___\ /\  == \ /\ \_\ \ /\  == \/\__  _\/\  __ \ /\  ___\ /\ \/\ \ /\  == \ /\  ___\   
+                    \ \ \____\ \  __< \ \____ \\ \  _-/\/_/\ \/\ \ \/\ \\ \ \____\ \ \_\ \\ \  __< \ \  __\   
+                     \ \_____\\ \_\ \_\\/\_____\\ \_\     \ \_\ \ \_____\\ \_____\\ \_____\\ \_\ \_\\ \_____\ 
+                      \/_____/ \/_/ /_/ \/_____/ \/_/      \/_/  \/_____/ \/_____/ \/_____/ \/_/ /_/ \/_____/
+
+
+                                                         Deadly Removal Tool   
+
+"
+
+# -------------------------------------------------     Source infection procedure      -------------------------------------------------- #
+
+# Disable the users AD account, workstation, remove xapp servers from farm
+
+Import-Module -Name "ActiveDirectory"
+Write-Output "The Active Directory module has been loaded ... "
+# Import-PSSession (New-PSSession -ConfigurationName Microsoft.Exchange -ConnectionUri *** -Authentication Kerberos) | Out-Null
+Write-Output "The Exchange session is established ... "
+# Get-PSSnapin -Name *.Citrix
+Write-Output "The Citrix XenApp module has been loaded ... "
+
+# -------------------------------------------    Active Directory and Exchange procedure    ---------------------------------------------- #
+
+<#
+Param (
+    [Parameter(Mandatory=$True)] [string]$userAccount,
+    [Parameter(Mandatory=$True)] [string]$userComputer
+)
+#>
+
+$infectedUser = Read-Host "Specify the login name of the infected user "
+$userComputer = 
+
+
+# -------------------------------------------------         Cleanup procedure           -------------------------------------------------- #
 
 $startStopWatch = (Get-Date)
 0..1000 | Foreach-Object {$i++}
 
-$genInformation = "This script will scan and remove Cryptolocker infected files "
-# $userName = Read-Host "Provide a username "
 $filePath = Read-Host "Provide locations for the cryptolocker cleanup "
 $filePathArray = $filePath -split ","
-$initWarning = Write-Warning "The script will remove files on the following locations:"
+$initWarning = Write-Host "The script will remove files on the following locations:" -Foregroundcolor "Yellow"
 $filePathArray
-
-$title = "Cryptolocker file removal"
+#$title = "Cryptolocker file removal"
 $message = "Are you sure you want to delete the encrypted files on the specified locations?"
 
 $yes = New-Object System.Management.Automation.Host.ChoiceDescription "&Yes", `
@@ -55,8 +88,15 @@ do {
 } until ($input -eq '')
 
 Foreach ($path in $filePathArray) {
-    Get-ChildItem $path -Include $extentionArray -Recurse | select Name, DirectoryName | Format-Table # | Remove-Item -Force
+    Write-Host "Directory: $path" | Format-Wide
+    Get-ChildItem $path -Include $extentionArray -Recurse | select Name, LastWriteTime, LastAccessTime | Format-List # | Remove-Item -Force
 }
+
+Write-Output "The encrypted files have been succesfully removed ... "
+
+# Output directories where path was longer than 260 chars
+
+# -------------------------------------------------         Scan procedure            ---------------------------------------------------- #
 
 $endStopWatch = (Get-Date)
 $elapsedTime = $(($endStopWatch - $startStopWatch).totalseconds)
