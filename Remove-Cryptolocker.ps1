@@ -32,9 +32,6 @@ switch ($result)
         0 {""}
         1 {
             Write-Host "The script has been terminated early."
-            $endStopWatch = (Get-Date)
-            $elapsedTime = $(($endStopWatch - $startStopWatch).totalseconds)
-            Write-Host "The script has finished running and took $elapsedTime seconds to complete" -Foregroundcolor "Green" -Backgroundcolor "Black"  
             Exit
         }
     }
@@ -57,13 +54,12 @@ do {
     }
 } until ($input -eq '')
 
-$finalArray = $extentionArray -Join ','
-
 Foreach ($path in $filePathArray) {
-    Get-ChildItem $path -Include $finalArray -Recurse # | Remove-Item -Force
+    $extentionArray
+    Get-ChildItem $path -Include $extentionArray -Recurse | select Name, DirectoryName | Format-Table # | Remove-Item -Force
 }
 
 $endStopWatch = (Get-Date)
 $elapsedTime = $(($endStopWatch - $startStopWatch).totalseconds)
-Write-Host "The script has finished running and took $elapsedTime seconds to complete" -Foregroundcolor "Green" -Backgroundcolor "Black"
+Write-Host "The script has finished running and took $elapsedTime seconds to complete" -Foregroundcolor "Yellow" -Backgroundcolor "Black"
 
