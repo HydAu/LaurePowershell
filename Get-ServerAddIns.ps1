@@ -10,7 +10,7 @@ $programFiles = Read-Host "Specify the file location(s) of the program "
 
 $programArray = $programFiles -split ","
 $csv = Import-CSV -Path $programLocation
-$strArray = $csv | Foreach {"$($_.Computer)"}
+$strArray = $csv | Foreach {"$($_.ServerName)"}
 
 $totalResults = @()
 
