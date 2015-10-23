@@ -13,6 +13,9 @@
                                                            Removal Tool 
 "
 
+# Set timer
+$startRuntime = (Get-Date)
+
 # Initialize all modules 
 Import-Module -Name "ActiveDirectory"
 Write-Output "The Active Directory module has been loaded ..."
@@ -25,8 +28,6 @@ Write-Output "The Citrix Snap-In has been loaded ..." -Foregroundcolor "Yellow" 
 
 # Variables
 $adminUser = (Get-WMIObject -class Win32_ComputerSystem | select username).username
-$userAbbreviated = $userAccount.SamAccountName
-$userFullName = $userAccount.Givenname + " " + $userAccount.Surname
 $userEmail = ($userAccount.EmailAddresses  | Select -Index 2).SmtpAddress
 $userPhoneNumber = $userAccount.officephone
 
@@ -48,6 +49,8 @@ switch ($discoveryModule) {
 # Disable the users AD account, workstation, remove xapp servers from farm and display messages
 $infectedUser = Read-Host "Specify the account of the user that has been infected "
 $userAccount = (Get-ADuser -Identity $infectedUser)
+$userAbbreviated = $userAccount.SamAccountName
+$userFullName = $userAccount.Givenname + " " + $userAccount.Surname
 $userComputer = Read-Host "Specify the computer name of the user "
 $filePath = Read-Host "Provide locations for the cryptolocker cleanup "
 $filePathArray = $filePath -split ","
@@ -96,15 +99,12 @@ Start-Sleep -Seconds 5
 # Write-Output $infectedUser $userComputer | Disable-ADAccount -PassThru
 Write-Host "The user account $userAbbreviated and workstation $userComputer of $userFullName have been disabled `n" -Foregroundcolor "Yellow"
 
-$startStopWatch = (Get-Date)
-0..1000 | Foreach-Object {$i++}
-
 Foreach ($path in $filePathArray) {
     Write-Output "Directory: $path" | Format-Wide
     Get-ChildItem $path -ErrorAction "SilentlyContinue" -Include $extentionArray -Recurse | select Name, LastWriteTime, LastAccessTime | Format-List # | Remove-Item -Force
 }
 
-Write-Host "The encrypted files have been succesfully removed from the network location " -Foregroundcolor "Yellow"
+Write-Host "The encrypted files have been succesfully removed from the network's location " -Foregroundcolor "Yellow"
 Start-Sleep -Seconds 2
 
 $drivePath = '\\SYN037664\C$\users\adminlkam\desktop\'  # "\\"+"$userComputer"+"\"+"C$"+"$env:username" - check env
@@ -114,7 +114,9 @@ Start-Sleep -Seconds 2
 Write-Host "The encrypted files have been succesfully removed from the user's homedrive " -Foregroundcolor "Yellow"
 Start-Sleep -Seconds 2
 
-$endStopWatch = (Get-Date)
-$elapsedTime = $(($endStopWatch - $startStopWatch).totalseconds)
-Write-Host "The script has finished running and took $elapsedTime seconds to complete" -Foregroundcolor "Green"
+$endRuntime = (Get-Date)
+$totalRuntime = [string]($endRuntime - $startRuntime).Hours + " hour(s) " `
++ [string]($endRuntime - $startRuntime).Minutes + " minute(s) and " `
++ [string]($endRuntime - $startRuntime).Seconds + " second(s)"
+Write-Host "The procedure has finished and took $totalRuntime seconds to complete`n" -Foregroundcolor "Green"
 
