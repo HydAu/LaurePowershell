@@ -1,4 +1,7 @@
-* Remove help decrypt 
-* Develop quick discovery switch module (discover malicious file, workstation link)
+* Develop quick discovery switch module. Write functions to retrief malicious files and workstation links.
 * Write 'null' input prevention method
 * Add 260 chars bypass (robocopy)
+* Cleanup user's homedrive for extention x and reset pwmenu's 
+* Restore lost files from snapshot if possible
+* Remove help decrypt files
+* Start-Sleep function
