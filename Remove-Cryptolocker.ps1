@@ -13,75 +13,46 @@
                                                            Removal Tool 
 "
 
-# -------------------------------------------------   Functions and Global Env   --------------------------------------------------------- #
-
-function Check-AD ($infectedUser,$userComputer) {
-    # 2 - check if Active Directory input is valid
-    [Parameter(Mandatory=$True)] [string]$infectedUser,
-    [Parameter(Mandatory=$True)] [string]$userComputer
-
-}
-
-# $ErrorActionPreference = "SilentlyContinue"
-
-# ------------------------------------------------------------  Init  -------------------------------------------------------------------- #
-
-# Load Active Directory Module
-if ((Get-Module -Name "ActiveDirectory") -eq $null) {
-    Import-Module -Name "ActiveDirectory"
-    Write-Output "The Active Directory module has been loaded ..."
-} else {Write-Output "The Active Directory module was already loaded"}
-
-# Load Exchange Snap-In 
+# Initialize all modules 
+Import-Module -Name "ActiveDirectory"
+Write-Output "The Active Directory module has been loaded ..."
 Write-Output "The Exchange session is established ..."
-
-<#
-If((Get-PSSnapin -Name Microsoft.Exchange.Management.PowerShell.E2010 -ErrorAction SilentlyContinue) -eq $null)
-{
-    Add-PSSnapin Microsoft.Exchange.Management.PowerShell.E2010
-    Write-Output "The Exchange Snap-In has been loaded ..." -Foregroundcolor "Yellow"
-}
-else {Write-Output "Exchange snap-in already loaded"}
-#>
-
-# Load Citrix Snap-In
+<# Add-PSSnapin Microsoft.Exchange.Management.PowerShell.E2010
+Write-Output "The Exchange Snap-In has been loaded ..." -Foregroundcolor "Yellow #>
 Write-Output "The Citrix XenApp module has been loaded ... `n"
-<#
-if((Get-PSSnapin -Name *.Citrix -ErrorAction SilentlyContinue) -eq $null)
-{
-    Add-PSSnapin Microsoft.Exchange.Management.PowerShell.E2010
-    Write-Output "The Citrix Snap-In has been loaded ..." -Foregroundcolor "Yellow"
-}
-else {Write-Output "Exchange snap-in already loaded"}
-#>
+<# Add-PSSnapin -Name *.Citrix -ErrorAction SilentlyContinue
+Write-Output "The Citrix Snap-In has been loaded ..." -Foregroundcolor "Yellow" #>
 
-# Disable the users AD account, workstation, remove xapp servers from farm
-
-# -------------------------------------------    Active Directory and Exchange procedure    ---------------------------------------------- #
-
-$infectedUser = Read-Host "Specify the account of the user that has been infected "
-$userComputer = Read-Host "Specify the computer name of the user "
-$userAccount = (Get-ADuser -Identity $infectedUser)
+# Variables
+$adminUser = (Get-WMIObject -class Win32_ComputerSystem | select username).username
 $userAbbreviated = $userAccount.SamAccountName
 $userFullName = $userAccount.Givenname + " " + $userAccount.Surname
-$userEmail = $userAccount.mail
+$userEmail = ($userAccount.EmailAddresses  | Select -Index 2).SmtpAddress
 $userPhoneNumber = $userAccount.officephone
 
-# Write-Output $infectedUser $userComputer | Disable-ADAccount -PassThru
-Write-Host "The user account $userAbbreviated and workstation $userComputer of $userFullName have been disabled `n" -Foregroundcolor "Yellow" 
+# Find harmful files, retrief user information (name, workstation), pipe to Exchange 
+$discoveryModule = Read-Host "Do you wish to run the discovery module first? [Y/N] "
+switch ($discoveryModule) {
+    "Y" {
+        <# Get-Mailbox -Identity $userAccount | `
+        Search-Mailbox -SearchQuery attachment:*.exe,from:"laure.kamalandua@synergics.be"`
+        -TargetMailbox $adminUser -TargetFolder "CryptoContent"#>
+        Write-Output "`nThe malicious mails have been deleted and forwarded to $userEmail...`n"
+    }
+    "N" {
+        Write-Output "`n"
+        Break
+    }
+}
 
-# -------------------------------------------------         Cleanup procedure           -------------------------------------------------- #
-
-$startStopWatch = (Get-Date)
-0..1000 | Foreach-Object {$i++}
-
+# Disable the users AD account, workstation, remove xapp servers from farm and display messages
+$infectedUser = Read-Host "Specify the account of the user that has been infected "
+$userAccount = (Get-ADuser -Identity $infectedUser)
+$userComputer = Read-Host "Specify the computer name of the user "
 $filePath = Read-Host "Provide locations for the cryptolocker cleanup "
 $filePathArray = $filePath -split ","
-
-# (2)
-
 Foreach ($path in $filePathArray) {
-    $pathCheck = Test-Path -Path $path -ErrorAction SilentlyContinue
+    $pathCheck = Test-Path -Path $path 
     if ($pathCheck -eq $False) {
         Write-Host "The specified file location is unavailable...`n" -Foregroundcolor "Red"
         Exit
@@ -89,15 +60,26 @@ Foreach ($path in $filePathArray) {
     else {Continue}
 }
 
-$initWarning = Write-Host "The script will remove files on the following locations:`n" -Foregroundcolor "Yellow"
-$filePathArray
-$message = "Are you sure you want to delete the encrypted files on the specified locations`n?" # exit if string is null
+$extentionArray = @()
+
+do {
+ $input = (Read-Host "Please enter the malicious file extention(s) ")
+ if ($input -ne '') {
+    $extentionArray += $input.Insert(0,"*")
+    }
+} until ($input -eq '')
+
+Start-Sleep -Seconds 1
+$initWarning = Write-Host "The script will remove files on the following locations and cleanup the cryptolocker:`n"
+$filePathArray + "`n"
+Start-Sleep -Seconds 1
+$message = "Are you sure you want to continue with this procedure and remove files on the following location?" # exit if string is null
 
 $yes = New-Object System.Management.Automation.Host.ChoiceDescription "&Yes", `
-    "Deletes all the encrypted files in the folder."
+    "Deletes all the encrypted files in the folders."
 
 $no = New-Object System.Management.Automation.Host.ChoiceDescription "&No", `
-    "Retains all the encrypted files in the folder."
+    "Retains all the encrypted files in the folders."
 
 $options = [System.Management.Automation.Host.ChoiceDescription[]]($yes, $no)
 $result = $host.ui.PromptForChoice($title, $message, $options, 0) 
@@ -109,28 +91,30 @@ switch ($result) {
     }
 }
 
-$extentionArray = @()
+Write-Host "`n... Starting the Cryptolocker procedure ...`n" -Foregroundcolor "Red"
+Start-Sleep -Seconds 5
+# Write-Output $infectedUser $userComputer | Disable-ADAccount -PassThru
+Write-Host "The user account $userAbbreviated and workstation $userComputer of $userFullName have been disabled `n" -Foregroundcolor "Yellow"
 
-do {
- $input = (Read-Host "Please enter the file extention(s) ")
- if ($input -ne '') {
-    $extentionArray += $input.Insert(0,"*")
-    }
-} until ($input -eq '')
+$startStopWatch = (Get-Date)
+0..1000 | Foreach-Object {$i++}
 
 Foreach ($path in $filePathArray) {
-    Write-Host "Directory: $path" | Format-Wide
-    Get-ChildItem $path -Include $extentionArray -Recurse | select Name, LastWriteTime, LastAccessTime | Format-List # | Remove-Item -Force
+    Write-Output "Directory: $path" | Format-Wide
+    Get-ChildItem $path -ErrorAction "SilentlyContinue" -Include $extentionArray -Recurse | select Name, LastWriteTime, LastAccessTime | Format-List # | Remove-Item -Force
 }
 
-Write-Output "The encrypted files have been succesfully removed from the user's homedrive "
+Write-Host "The encrypted files have been succesfully removed from the network location " -Foregroundcolor "Yellow"
 Start-Sleep -Seconds 2
 
-# Output directories where path was longer than 260 chars and start processing in robocopy
+$drivePath = '\\SYN037664\C$\users\adminlkam\desktop\'  # "\\"+"$userComputer"+"\"+"C$"+"$env:username" - check env
+Get-ChildItem $drivePath -Include $extentionArray -Recurse | select Name, LastWriteTime, LastAccessTime | Format-List # | Remove-Item -Force
 
-# -------------------------------------------------         Scan procedure            ---------------------------------------------------- #
+Start-Sleep -Seconds 2
+Write-Host "The encrypted files have been succesfully removed from the user's homedrive " -Foregroundcolor "Yellow"
+Start-Sleep -Seconds 2
 
 $endStopWatch = (Get-Date)
 $elapsedTime = $(($endStopWatch - $startStopWatch).totalseconds)
-Write-Host "The script has finished running and took $elapsedTime seconds to complete" -Foregroundcolor "Yellow" -Backgroundcolor "Black"
+Write-Host "The script has finished running and took $elapsedTime seconds to complete" -Foregroundcolor "Green"
 
