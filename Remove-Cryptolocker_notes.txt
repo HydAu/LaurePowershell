@@ -1,0 +1,4 @@
+* Remove help decrypt 
+* Develop quick discovery switch module (discover malicious file, workstation link)
+* Write 'null' input prevention method
+* Add 260 chars bypass (robocopy)
