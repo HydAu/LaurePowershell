@@ -5,3 +5,6 @@
 * Restore lost files from snapshot if possible
 * Remove help decrypt files
 * Start-Sleep function
+* Check how many malicious files have been added throughout procedure and calculate differences
+* Write timer to function
+* Recheck data types, restructure variables and scope
