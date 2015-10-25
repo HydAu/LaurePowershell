@@ -17,17 +17,17 @@
 $startRuntime = (Get-Date)
 
 # Initialize all modules 
-Import-Module -Name "ActiveDirectory"
+Import-Module -Name ActiveDirectory
 Write-Output "The Active Directory module has been loaded ..."
 Write-Output "The Exchange session is established ..."
 <# Add-PSSnapin Microsoft.Exchange.Management.PowerShell.E2010
 Write-Output "The Exchange Snap-In has been loaded ..." -Foregroundcolor "Yellow #>
 Write-Output "The Citrix XenApp module has been loaded ... `n"
-<# Add-PSSnapin -Name *.Citrix -ErrorAction SilentlyContinue
+<# Add-PSSnapin -Name *.Citrix
 Write-Output "The Citrix Snap-In has been loaded ..." -Foregroundcolor "Yellow" #>
 
 # Variables
-$adminUser = (Get-WMIObject -class Win32_ComputerSystem | select username).username
+$adminUser = (Get-ChildItem env:username).Value
 $userEmail = ($userAccount.EmailAddresses  | Select -Index 2).SmtpAddress
 $userPhoneNumber = $userAccount.officephone
 
@@ -41,18 +41,20 @@ switch ($discoveryModule) {
         Write-Output "`nThe malicious mails have been deleted and forwarded to $userEmail...`n"
     }
     "N" {
-        Write-Output "`n"
         Break
     }
 }
 
 # Disable the users AD account, workstation, remove xapp servers from farm and display messages
-$infectedUser = Read-Host "Specify the account of the user that has been infected "
+$infectedUser = [string](Read-Host "Specify the account of the user that has been infected ")
 $userAccount = (Get-ADuser -Identity $infectedUser)
-$userAbbreviated = $userAccount.SamAccountName
-$userFullName = $userAccount.Givenname + " " + $userAccount.Surname
-$userComputer = Read-Host "Specify the computer name of the user "
-$filePath = Read-Host "Provide locations for the cryptolocker cleanup "
+$userAbbreviated = ($userAccount.SamAccountName)
+$userFullName = ($userAccount.Givenname + " " + (($userAccount.Surname)).Substring(0,1) + (($userAccount.Surname).ToLower()).Remove(0,1))
+$userComputer = [string](Read-Host "Specify the computer name of the user ")
+$serverXAP = [string](Read-Host "Specify the compromised XAP server(s) ")
+$infectedUserHomeDrive = "\\$userComputer\C$\users\$adminUser\desktop" # production -> '\\$userComputer\users\$userAbbreviated'
+$infectedUserRES = ("\\files.attentia.be\users\$userAbbreviated\pwrmenu_1','\\files.attentia.be\users\$userAbbreviated\pwrmenu_2")
+$filePath = Read-Host "Provide additional network locations for the cryptolocker cleanup "
 $filePathArray = $filePath -split ","
 Foreach ($path in $filePathArray) {
     $pathCheck = Test-Path -Path $path 
@@ -67,16 +69,23 @@ $extentionArray = @()
 
 do {
  $input = (Read-Host "Please enter the malicious file extention(s) ")
- if ($input -ne '') {
+ if ($input -ne "") {
     $extentionArray += $input.Insert(0,"*")
     }
-} until ($input -eq '')
+} until ($input -eq "")
 
+Start-Sleep -Seconds 2
+$initWarning = Write-Host "The script will remove files on the following locations:`n"
+
+do {
+    $val++
+    Write-Host "$val." $filePathArray[$val-1]
+}   until ($val -eq $filePathArray.length)
+Write-Host ([string]($val + 1)).Insert(1,".") $infectedUserHomeDrive
+
+#$infectedUserHomeDrive + "`n"
 Start-Sleep -Seconds 1
-$initWarning = Write-Host "The script will remove files on the following locations and cleanup the cryptolocker:`n"
-$filePathArray + "`n"
-Start-Sleep -Seconds 1
-$message = "Are you sure you want to continue with this procedure and remove files on the following location?" # exit if string is null
+$message = "`nAre you sure you want to continue with this procedure?" # exit if string is null
 
 $yes = New-Object System.Management.Automation.Host.ChoiceDescription "&Yes", `
     "Deletes all the encrypted files in the folders."
@@ -97,20 +106,15 @@ switch ($result) {
 Write-Host "`n... Starting the Cryptolocker procedure ...`n" -Foregroundcolor "Red"
 Start-Sleep -Seconds 5
 # Write-Output $infectedUser $userComputer | Disable-ADAccount -PassThru
-Write-Host "The user account $userAbbreviated and workstation $userComputer of $userFullName have been disabled `n" -Foregroundcolor "Yellow"
+Write-Host "The user account $userAbbreviated and workstation $userComputer of $userFullName have been disabled" -Foregroundcolor "Yellow"
 
 Foreach ($path in $filePathArray) {
-    Write-Output "Directory: $path" | Format-Wide
-    Get-ChildItem $path -ErrorAction "SilentlyContinue" -Include $extentionArray -Recurse | select Name, LastWriteTime, LastAccessTime | Format-List # | Remove-Item -Force
+    # Write-Output "Directory: $path" | Format-Wide
+    Get-ChildItem $path -Include $extentionArray -Recurse | select Name, LastAccessTime | Format-List # | Out-Null | Remove-Item -Force
 }
 
 Write-Host "The encrypted files have been succesfully removed from the network's location " -Foregroundcolor "Yellow"
-Start-Sleep -Seconds 2
-
-$drivePath = '\\SYN037664\C$\users\adminlkam\desktop\'  # "\\"+"$userComputer"+"\"+"C$"+"$env:username" - check env
-Get-ChildItem $drivePath -Include $extentionArray -Recurse | select Name, LastWriteTime, LastAccessTime | Format-List # | Remove-Item -Force
-
-Start-Sleep -Seconds 2
+Get-ChildItem $infectedUserHomeDrive -Include $extentionArray -Recurse | select Name, LastAccessTime | Format-List # | Out-Null # Remove-Item -Force
 Write-Host "The encrypted files have been succesfully removed from the user's homedrive " -Foregroundcolor "Yellow"
 Start-Sleep -Seconds 2
 
@@ -118,5 +122,5 @@ $endRuntime = (Get-Date)
 $totalRuntime = [string]($endRuntime - $startRuntime).Hours + " hour(s) " `
 + [string]($endRuntime - $startRuntime).Minutes + " minute(s) and " `
 + [string]($endRuntime - $startRuntime).Seconds + " second(s)"
-Write-Host "The procedure has finished and took $totalRuntime seconds to complete`n" -Foregroundcolor "Green"
+Write-Host "The procedure has finished and took $totalRuntime to complete" -Foregroundcolor "Green"
 
